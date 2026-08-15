@@ -445,7 +445,7 @@ class EnhancedDataFetcher:
                 "client": "web",
                 "biz": "web_news_col",
                 "column": "102",
-                "order": 1",
+                "order": 1,
                 "needInteractData": 0,
                 "page_index": 1,
                 "page_size": 20
