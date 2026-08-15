@@ -24,6 +24,10 @@ from .dca_strategy import dca_strategy_analyzer
 from .history import history_manager
 from .fund_analysis import fund_analysis_analyzer
 from .backtest import backtest_analyzer
+from .macro_analysis import macro_analyzer
+from .sector_rotation import sector_rotation_analyzer
+from .smart_stoploss import smart_stoploss_analyzer
+from .anomaly_detection import anomaly_detector
 
 
 def analyze_all_funds() -> List[Dict[str, Any]]:
@@ -230,7 +234,36 @@ def comprehensive_analysis(
         )
         result["backtest"] = backtest_result
 
-        # 13. 生成综合信号（包含所有分析维度）
+        # 13. 宏观经济分析
+        macro_result = macro_analyzer.analyze_macro_environment()
+        result["macro"] = macro_result
+
+        # 14. 行业轮动分析
+        sector_result = sector_rotation_analyzer.generate_rotation_signal(
+            fund_code=fund_code,
+            fund_sectors=[]  # 可从持仓分析中获取
+        )
+        result["sector_rotation"] = sector_result
+
+        # 15. 智能止损分析
+        stoploss_result = smart_stoploss_analyzer.generate_stoploss_advice(
+            nav_data=nav_data,
+            signal_type=result.get("signal", {}).get("category", "hold")
+        )
+        result["smart_stoploss"] = stoploss_result
+
+        # 16. 异常检测
+        anomaly_data = {
+            "fund_code": fund_code,
+            "nav_data": nav_data,
+            "flow_data": flow_data,
+            "manager_info": manager_info if 'manager_info' in dir() else None,
+            "holdings_data": holdings if 'holdings' in dir() else None
+        }
+        anomaly_result = anomaly_detector.detect_all_anomalies(anomaly_data)
+        result["anomaly"] = anomaly_result
+
+        # 17. 生成综合信号（包含所有分析维度）
         all_analysis = {
             "technical": result.get("technical", {}),
             "capital": result.get("capital", {}),

@@ -343,6 +343,89 @@ class PushPlusNotifier:
     </div>
 """
 
+        # 宏观经济分析
+        macro = fund.get('macro', {})
+        if macro and macro.get('has_data'):
+            indicators = macro.get('indicators', {})
+            interest_rate = indicators.get('利率', {})
+            cpi = indicators.get('CPI', {})
+            pmi = indicators.get('PMI', {})
+            policy = indicators.get('货币政策', {})
+
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">宏观经济</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">综合评分</td><td style="padding: 4px 0; text-align: right; font-weight: bold;">{macro.get('total_score', 0)}分</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">环境评估</td><td style="padding: 4px 0; text-align: right;">{macro.get('description', '暂无')}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">利率</td><td style="padding: 4px 0; text-align: right;">{interest_rate.get('description', '暂无')}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">CPI</td><td style="padding: 4px 0; text-align: right;">{cpi.get('description', '暂无')}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">PMI</td><td style="padding: 4px 0; text-align: right;">{pmi.get('description', '暂无')}</td></tr>
+        </table>
+    </div>
+"""
+
+        # 行业轮动分析
+        sector = fund.get('sector_rotation', {})
+        if sector and sector.get('has_data'):
+            momentum = sector.get('momentum', {})
+            hot_sectors = momentum.get('hot_sectors', [])
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">行业轮动</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">综合评分</td><td style="padding: 4px 0; text-align: right; font-weight: bold;">{sector.get('score', 0)}分</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">热门行业</td><td style="padding: 4px 0; text-align: right;">{', '.join(hot_sectors) if hot_sectors else '暂无'}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">建议</td><td style="padding: 4px 0; text-align: right;">{sector.get('advice', '暂无')}</td></tr>
+        </table>
+    </div>
+"""
+
+        # 智能止损分析
+        stoploss = fund.get('smart_stoploss', {})
+        if stoploss and stoploss.get('has_data'):
+            sl = stoploss.get('stoploss', {})
+            tp = stoploss.get('takeprofit', {})
+            position = stoploss.get('position', {})
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">智能止损</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">波动率</td><td style="padding: 4px 0; text-align: right;">{stoploss.get('volatility', 0)}% ({stoploss.get('volatility_level', '暂无')})</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">止损位</td><td style="padding: 4px 0; text-align: right; color: #e74c3c;">{sl.get('fixed', {}).get('percentage', 0)}%</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">止盈位</td><td style="padding: 4px 0; text-align: right; color: #27ae60;">{tp.get('percentage', 0)}%</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">建议仓位</td><td style="padding: 4px 0; text-align: right;">{position.get('suggested_fraction', 0)}%</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">操作建议</td><td style="padding: 4px 0; text-align: right;">{stoploss.get('advice', '暂无')}</td></tr>
+        </table>
+    </div>
+"""
+
+        # 异常检测
+        anomaly = fund.get('anomaly', {})
+        if anomaly and anomaly.get('has_data'):
+            anomaly_list = anomaly.get('anomalies', [])
+            risk_color = "#27ae60" if anomaly.get('overall_risk') == 'low' else "#f39c12" if anomaly.get('overall_risk') == 'medium' else "#e74c3c"
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">异常检测</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">风险等级</td><td style="padding: 4px 0; text-align: right; color: {risk_color}; font-weight: bold;">{anomaly.get('overall_risk', '暂无').upper()}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">异常数量</td><td style="padding: 4px 0; text-align: right;">{anomaly.get('anomaly_count', 0)}项</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">检测结果</td><td style="padding: 4px 0; text-align: right;">{anomaly.get('description', '暂无')}</td></tr>
+"""
+            if anomaly_list:
+                html += """
+            <tr><td colspan="2" style="padding: 4px 0; color: #666; font-weight: bold;">异常详情</td></tr>
+"""
+                for a in anomaly_list[:3]:  # 最多显示3条
+                    html += f"""
+            <tr><td colspan="2" style="padding: 2px 0; color: #856404; font-size: 11px;">- {a.get('description', '')}</td></tr>
+"""
+            html += """
+        </table>
+    </div>
+"""
+
         html += "</div>"
         return html
 

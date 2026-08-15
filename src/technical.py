@@ -434,12 +434,114 @@ class TechnicalAnalyzer:
             "j_value": current_j
         }
 
-    def generate_signals(self, prices: pd.Series) -> Dict[str, Any]:
+    def calculate_volume_ma(self, volumes: pd.Series, period: int = 20) -> Dict[str, Any]:
+        """
+        计算成交量均线和量价关系
+
+        Args:
+            volumes: 成交量序列
+            period: 周期
+
+        Returns:
+            dict: 成交量分析
+        """
+        if len(volumes) < period or volumes is None:
+            return {
+                "volume_ma": None,
+                "signal": "unknown",
+                "description": "数据不足"
+            }
+
+        # 计算成交量均线
+        volume_ma = volumes.rolling(window=period).mean()
+        current_volume = volumes.iloc[-1]
+        current_ma = volume_ma.iloc[-1]
+
+        # 计算量比
+        volume_ratio = current_volume / current_ma if current_ma > 0 else 1
+
+        # 判断信号
+        signal_type = "neutral"
+        description = ""
+
+        if volume_ratio > 2:
+            signal_type = "heavy_volume"
+            description = f"放量明显(量比{volume_ratio:.1f})，关注趋势变化"
+        elif volume_ratio > 1.5:
+            signal_type = "increasing"
+            description = f"温和放量(量比{volume_ratio:.1f})"
+        elif volume_ratio < 0.5:
+            signal_type = "shrinking"
+            description = f"缩量明显(量比{volume_ratio:.1f})，观望为主"
+        elif volume_ratio < 0.7:
+            signal_type = "light_volume"
+            description = f"轻微缩量(量比{volume_ratio:.1f})"
+        else:
+            description = f"成交量正常(量比{volume_ratio:.1f})"
+
+        return {
+            "volume_ma": volume_ma,
+            "volume_ratio": volume_ratio,
+            "signal": signal_type,
+            "description": description
+        }
+
+    def calculate_vwap(self, prices: pd.Series, volumes: pd.Series) -> Dict[str, Any]:
+        """
+        计算VWAP (成交量加权平均价)
+
+        Args:
+            prices: 价格序列
+            volumes: 成交量序列
+
+        Returns:
+            dict: VWAP指标
+        """
+        if prices is None or volumes is None or len(prices) < 20:
+            return {
+                "vwap": None,
+                "signal": "unknown",
+                "description": "数据不足"
+            }
+
+        # 计算VWAP
+        vwap = (prices * volumes).cumsum() / volumes.cumsum()
+        current_price = prices.iloc[-1]
+        current_vwap = vwap.iloc[-1]
+
+        # 判断价格与VWAP的关系
+        signal_type = "neutral"
+        description = ""
+
+        if current_price > current_vwap * 1.02:
+            signal_type = "above_vwap"
+            description = f"价格高于VWAP 2%以上，短期偏强"
+        elif current_price > current_vwap:
+            signal_type = "near_vwap_above"
+            description = f"价格略高于VWAP，中性偏强"
+        elif current_price < current_vwap * 0.98:
+            signal_type = "below_vwap"
+            description = f"价格低于VWAP 2%以上，短期偏弱"
+        elif current_price < current_vwap:
+            signal_type = "near_vwap_below"
+            description = f"价格略低于VWAP，中性偏弱"
+        else:
+            description = "价格围绕VWAP波动"
+
+        return {
+            "vwap": vwap,
+            "current_vwap": current_vwap,
+            "signal": signal_type,
+            "description": description
+        }
+
+    def generate_signals(self, prices: pd.Series, volumes: pd.Series = None) -> Dict[str, Any]:
         """
         生成技术指标综合信号
 
         Args:
             prices: 价格序列
+            volumes: 成交量序列(可选)
 
         Returns:
             dict: 综合信号
@@ -449,31 +551,54 @@ class TechnicalAnalyzer:
         # MACD信号
         macd = self.calculate_macd(prices)
         if macd["signal"] in ["golden_cross", "bullish_divergence"]:
-            signals.append({"indicator": "MACD", "signal": "bullish", "weight": 0.3})
+            signals.append({"indicator": "MACD", "signal": "bullish", "weight": 0.25})
         elif macd["signal"] in ["death_cross", "bearish_divergence"]:
-            signals.append({"indicator": "MACD", "signal": "bearish", "weight": 0.3})
+            signals.append({"indicator": "MACD", "signal": "bearish", "weight": 0.25})
 
         # RSI信号
         rsi = self.calculate_rsi(prices)
         if rsi["signal"] == "oversold":
-            signals.append({"indicator": "RSI", "signal": "bullish", "weight": 0.25})
+            signals.append({"indicator": "RSI", "signal": "bullish", "weight": 0.2})
         elif rsi["signal"] == "overbought":
-            signals.append({"indicator": "RSI", "signal": "bearish", "weight": 0.25})
+            signals.append({"indicator": "RSI", "signal": "bearish", "weight": 0.2})
 
         # 布林带信号
         bollinger = self.calculate_bollinger(prices)
         if bollinger["signal"] == "below_lower":
-            signals.append({"indicator": "Bollinger", "signal": "bullish", "weight": 0.25})
+            signals.append({"indicator": "Bollinger", "signal": "bullish", "weight": 0.2})
         elif bollinger["signal"] == "above_upper":
-            signals.append({"indicator": "Bollinger", "signal": "bearish", "weight": 0.25})
+            signals.append({"indicator": "Bollinger", "signal": "bearish", "weight": 0.2})
+
+        # KDJ信号
+        kdj = self.calculate_kdj(prices)
+        if kdj["signal"] == "oversold":
+            signals.append({"indicator": "KDJ", "signal": "bullish", "weight": 0.15})
+        elif kdj["signal"] == "overbought":
+            signals.append({"indicator": "KDJ", "signal": "bearish", "weight": 0.15})
 
         # K线形态
         patterns = self.identify_patterns(prices)
         for pattern in patterns:
             if pattern["signal"] == "bullish":
-                signals.append({"indicator": "Pattern", "signal": "bullish", "weight": 0.2})
+                signals.append({"indicator": "Pattern", "signal": "bullish", "weight": 0.1})
             elif pattern["signal"] == "bearish":
-                signals.append({"indicator": "Pattern", "signal": "bearish", "weight": 0.2})
+                signals.append({"indicator": "Pattern", "signal": "bearish", "weight": 0.1})
+
+        # 成交量信号(如果有)
+        volume_analysis = None
+        vwap_analysis = None
+        if volumes is not None:
+            volume_analysis = self.calculate_volume_ma(volumes)
+            if volume_analysis["signal"] in ["heavy_volume", "increasing"]:
+                signals.append({"indicator": "Volume", "signal": "bullish", "weight": 0.1})
+            elif volume_analysis["signal"] in ["shrinking", "light_volume"]:
+                signals.append({"indicator": "Volume", "signal": "bearish", "weight": 0.1})
+
+            vwap_analysis = self.calculate_vwap(prices, volumes)
+            if vwap_analysis["signal"] == "above_vwap":
+                signals.append({"indicator": "VWAP", "signal": "bullish", "weight": 0.1})
+            elif vwap_analysis["signal"] == "below_vwap":
+                signals.append({"indicator": "VWAP", "signal": "bearish", "weight": 0.1})
 
         # 计算综合信号
         bullish_weight = sum(s["weight"] for s in signals if s["signal"] == "bullish")
@@ -500,7 +625,10 @@ class TechnicalAnalyzer:
             "macd": macd,
             "rsi": rsi,
             "bollinger": bollinger,
-            "patterns": patterns
+            "kdj": kdj,
+            "patterns": patterns,
+            "volume": volume_analysis,
+            "vwap": vwap_analysis
         }
 
 
