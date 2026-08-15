@@ -206,18 +206,55 @@ class PushPlusNotifier:
             signal_type = signal.get('type', '')
             conditions = signal.get('conditions', [])
             confidence = signal.get('confidence', 0)
+            reason = signal.get('reason', '')
+            risk_warnings = signal.get('risk_warnings', [])
+            action_plan = signal.get('action_plan', {})
             signal_color = "#27ae60" if signal.get('category') == 'buy' else "#e74c3c" if signal.get('category') == 'sell' else "#f39c12"
 
             html += f"""
     <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">交易信号</div>
-        <div style="text-align: center; padding: 8px; background: {signal_color}15; border-radius: 6px; margin-bottom: 8px;">
-            <span style="color: {signal_color}; font-weight: bold; font-size: 15px;">{self._translate(signal_type)}</span>
-            <span style="color: #999; font-size: 12px; margin-left: 8px;">置信度 {confidence:.0%}</span>
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">投资建议</div>
+        <div style="text-align: center; padding: 12px; background: {signal_color}15; border-radius: 6px; margin-bottom: 10px;">
+            <div style="color: {signal_color}; font-weight: bold; font-size: 18px;">{self._translate(signal_type)}</div>
+            <div style="color: #666; font-size: 12px; margin-top: 4px;">置信度 {confidence:.0%}</div>
         </div>
-        <div style="font-size: 12px; color: #666;">
-            <b>触发条件:</b> {', '.join(conditions) if conditions else '无'}
+        <div style="font-size: 13px; color: #333; margin-bottom: 8px;">
+            <b>判断依据:</b> {reason or '多维度综合分析'}
         </div>
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+            <b>触发条件:</b> {', '.join(conditions) if conditions else '无明显信号'}
+        </div>
+"""
+
+            # 风险提示
+            if risk_warnings:
+                html += """
+        <div style="background: #fff3cd; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+            <div style="font-weight: bold; color: #856404; font-size: 12px; margin-bottom: 4px;">风险提示</div>
+"""
+                for warning in risk_warnings:
+                    html += f"""
+            <div style="font-size: 11px; color: #856404;">- {warning}</div>
+"""
+                html += """
+        </div>
+"""
+
+            # 操作建议
+            if action_plan:
+                html += f"""
+        <div style="background: #e7f3ff; border-radius: 4px; padding: 8px;">
+            <div style="font-weight: bold; color: #0c5460; font-size: 12px; margin-bottom: 4px;">操作建议</div>
+            <div style="font-size: 12px; color: #0c5460;">
+                <b>建议仓位:</b> {action_plan.get('suggested_position', '30-50%')}<br>
+                <b>操作动作:</b> {action_plan.get('action', '维持现有仓位')}<br>
+                <b>止损位:</b> {action_plan.get('stop_loss', '建议设置5-8%止损')}<br>
+                <b>止盈位:</b> {action_plan.get('take_profit', '建议设置10-15%止盈')}
+            </div>
+        </div>
+"""
+
+            html += """
     </div>
 """
 

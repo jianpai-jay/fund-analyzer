@@ -122,8 +122,9 @@ class FundAnalyzer:
             nav_series = df['nav']
             return_series = df['daily_return'].dropna()
 
-            # 波动率 (年化)
-            volatility = return_series.std() * np.sqrt(252) if not return_series.empty else 0.0
+            # 波动率 (年化) - 将百分比转换为小数
+            return_decimal = return_series / 100
+            volatility = return_decimal.std() * np.sqrt(252) if not return_decimal.empty else 0.0
 
             # 最大回撤
             max_drawdown = self._calculate_max_drawdown(nav_series)

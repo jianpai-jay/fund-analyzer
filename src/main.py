@@ -189,47 +189,57 @@ def comprehensive_analysis(
         # 6. 估值分析
         result["valuation"] = analyze_valuation(fund_info, basic_metrics)
 
-        # 7. 生成综合信号
-        all_analysis = {
-            "technical": result.get("technical", {}),
-            "capital": result.get("capital", {}),
-            "sentiment": result.get("sentiment", {}),
-            "news": result.get("news", {}),
-            "valuation": result.get("valuation", {})
-        }
-        comprehensive_signal = signal_generator.generate_comprehensive_signal(all_analysis)
-        result["signal"] = {
-            "category": comprehensive_signal.get("signal_category"),
-            "type": comprehensive_signal.get("signal_type"),
-            "description": comprehensive_signal.get("description"),
-            "confidence": comprehensive_signal.get("confidence"),
-            "conditions": comprehensive_signal.get("conditions")
-        }
-
-        # 8. 综合评分
-        result["overall_score"] = calculate_overall_score(result)
-
-        # 9. 持仓分析
+        # 7. 持仓分析
         holdings = data_fetcher.get_fund_holdings(fund_code)
         if holdings:
             holdings_result = fund_holdings_analyzer.analyze_holdings(holdings, fund_code)
             result["holdings"] = holdings_result
 
-        # 10. 基金经理分析
+        # 8. 基金经理分析
         manager_info = data_fetcher.get_fund_manager(fund_code)
         if manager_info:
             manager_result = fund_manager_analyzer.analyze_manager(manager_info, fund_code)
             result["manager"] = manager_result
 
-        # 11. 同类基金对比
+        # 9. 同类基金对比
         peer_funds = data_fetcher.get_peer_funds(fund_code, fund_type)
         if peer_funds:
             peer_result = peer_comparison_analyzer.analyze_peer_comparison(result, peer_funds, fund_code)
             result["peer_comparison"] = peer_result
 
-        # 12. 定投策略分析
+        # 10. 定投策略分析
         dca_result = dca_strategy_analyzer.analyze_dca_strategy(nav_data, fund_code)
         result["dca_strategy"] = dca_result
+
+        # 11. 生成综合信号（包含所有分析维度）
+        all_analysis = {
+            "technical": result.get("technical", {}),
+            "capital": result.get("capital", {}),
+            "sentiment": result.get("sentiment", {}),
+            "news": result.get("news", {}),
+            "valuation": result.get("valuation", {}),
+            "manager": result.get("manager", {}),
+            "holdings": result.get("holdings", {}),
+            "peer_comparison": result.get("peer_comparison", {}),
+            "dca_strategy": result.get("dca_strategy", {}),
+            "volatility": risk_metrics.get("volatility", 0),
+            "max_drawdown": risk_metrics.get("max_drawdown", 0)
+        }
+        comprehensive_signal = signal_generator.generate_comprehensive_signal(all_analysis)
+        recommendation = comprehensive_signal.get("recommendation", {})
+        result["signal"] = {
+            "category": comprehensive_signal.get("signal_category"),
+            "type": comprehensive_signal.get("signal_type"),
+            "description": comprehensive_signal.get("description"),
+            "confidence": comprehensive_signal.get("confidence"),
+            "conditions": comprehensive_signal.get("conditions"),
+            "reason": recommendation.get("reason", ""),
+            "risk_warnings": comprehensive_signal.get("risk_warnings", []),
+            "action_plan": comprehensive_signal.get("action_plan", {})
+        }
+
+        # 12. 综合评分
+        result["overall_score"] = calculate_overall_score(result)
 
     else:
         result["error"] = "无法获取数据"
@@ -398,13 +408,25 @@ def print_result(result: Dict):
     print(f"  恐慌贪婪指数: {sentiment.get('fear_greed_index', 'N/A')}")
     print(f"  建议: {sentiment.get('advice', 'N/A')}")
 
-    # 交易信号
+    # 投资建议
     signal = result.get("signal", {})
-    print(f"\n🔔 交易信号: {signal.get('description', 'N/A')}")
+    print(f"\n🔔 投资建议: {signal.get('description', 'N/A')}")
     print(f"  信号类型: {signal.get('type', 'N/A')}")
-    print(f"  信号强度: {signal.get('confidence', 0):.0%}")
+    print(f"  置信度: {signal.get('confidence', 0):.0%}")
+    print(f"  判断依据: {signal.get('reason', '多维度综合分析')}")
     if signal.get("conditions"):
         print(f"  触发条件: {', '.join(signal.get('conditions', []))}")
+    if signal.get("risk_warnings"):
+        print(f"  风险提示:")
+        for warning in signal.get("risk_warnings", []):
+            print(f"    - {warning}")
+    action_plan = signal.get("action_plan", {})
+    if action_plan:
+        print(f"  操作建议:")
+        print(f"    建议仓位: {action_plan.get('suggested_position', '30-50%')}")
+        print(f"    操作动作: {action_plan.get('action', '维持现有仓位')}")
+        print(f"    止损位: {action_plan.get('stop_loss', '建议设置5-8%止损')}")
+        print(f"    止盈位: {action_plan.get('take_profit', '建议设置10-15%止盈')}")
 
     # 综合评分
     overall = result.get("overall_score", {})
