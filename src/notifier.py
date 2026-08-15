@@ -228,6 +228,139 @@ class PushPlusNotifier:
         return self._send_message(title, content, template="html")
 
 
+    def send_signal_alert(self, fund_data: Dict[str, Any]) -> bool:
+        """
+        发送交易信号提醒
+
+        Args:
+            fund_data: 基金分析数据
+
+        Returns:
+            bool: 是否发送成功
+        """
+        if not self.token:
+            print("未配置 PushPlus Token，跳过推送")
+            return False
+
+        signal = fund_data.get("signal", {})
+        signal_category = signal.get("category")
+        signal_type = signal.get("type")
+
+        # 根据信号类型设置标题
+        if signal_category == "buy":
+            title = f"🔔 买入信号 - {fund_data['name']}"
+        elif signal_category == "sell":
+            title = f"🔔 卖出信号 - {fund_data['name']}"
+        else:
+            return False
+
+        content = self._format_signal_message(fund_data)
+
+        return self._send_message(title, content, template="html")
+
+    def _format_signal_message(self, fund_data: Dict[str, Any]) -> str:
+        """
+        格式化信号消息
+
+        Args:
+            fund_data: 基金分析数据
+
+        Returns:
+            str: HTML 格式的信号消息
+        """
+        signal = fund_data.get("signal", {})
+        signal_category = signal.get("category")
+        signal_type = signal.get("type")
+        confidence = signal.get("confidence", 0)
+        conditions = signal.get("conditions", [])
+
+        # 信号颜色
+        if signal_category == "buy":
+            signal_color = "#27ae60"
+            signal_icon = "📈"
+        else:
+            signal_color = "#e74c3c"
+            signal_icon = "📉"
+
+        html = f"""
+<h2>{signal_icon} 基金交易信号提醒</h2>
+<p style="color: #666; font-size: 14px;">生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+<hr>
+
+<div style="padding: 15px; background-color: {'#d4edda' if signal_category == 'buy' else '#f8d7da'}; border-radius: 8px; border-left: 4px solid {signal_color};">
+    <h3 style="margin-top: 0; color: {signal_color};">{fund_data['name']} ({fund_data['code']})</h3>
+    <p style="font-size: 18px; font-weight: bold; color: {signal_color};">
+        {signal.get('description', 'N/A')}
+    </p>
+    <p style="font-size: 14px;">信号强度: {confidence:.0%}</p>
+</div>
+
+<h4>📊 分析维度</h4>
+<table style="width: 100%; border-collapse: collapse;">
+"""
+
+        # 技术分析
+        technical = fund_data.get("technical", {})
+        html += f"""
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">技术面</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{technical.get('description', 'N/A')}</td>
+    </tr>
+"""
+
+        # 资金流向
+        capital = fund_data.get("capital", {})
+        html += f"""
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">资金面</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{capital.get('description', 'N/A')}</td>
+    </tr>
+"""
+
+        # 情绪分析
+        sentiment = fund_data.get("sentiment", {})
+        html += f"""
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">情绪面</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{sentiment.get('description', 'N/A')}</td>
+    </tr>
+"""
+
+        # 新闻分析
+        news = fund_data.get("news", {})
+        html += f"""
+    <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">新闻面</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">{news.get('description', 'N/A')}</td>
+    </tr>
+"""
+
+        html += """
+</table>
+
+<h4>✅ 触发条件</h4>
+<ul>
+"""
+
+        for condition in conditions:
+            html += f"    <li>{condition}</li>\n"
+
+        html += f"""
+</ul>
+
+<h4>💡 建议操作</h4>
+<p style="padding: 10px; background-color: #e7f3ff; border-radius: 5px;">
+    {"建议考虑买入，但请注意风险控制" if signal_category == "buy" else "建议考虑卖出或减仓"}
+</p>
+
+<div style="margin-top: 20px; padding: 10px; background-color: #fff3cd; border-radius: 8px; font-size: 12px; color: #856404;">
+    📌 <strong>免责声明</strong>: 以上分析仅供参考，不构成投资建议。基金有风险，投资需谨慎。
+</div>
+"""
+
+        return html
+
+
 def create_notifier(token: str = None) -> PushPlusNotifier:
     """
     创建通知器实例
