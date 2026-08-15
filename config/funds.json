@@ -13,6 +13,6 @@
   ],
   "analysis_days": 90,
   "notify_webhook": "",
-  "pushplus_token": "3766aa6c9c7645e3b36282440cabb1aa",
+  "pushplus_token": "",
   "pushplus_topic": ""
 }

@@ -449,13 +449,12 @@ class PushPlusNotifier:
         }
 
         try:
-            print(f"推送Token: {self.token[:8]}...{self.token[-4:]}")
             print(f"推送URL: {self.api_url}")
             response = requests.post(self.api_url, json=payload, timeout=30)
             print(f"响应状态码: {response.status_code}")
-            print(f"响应内容: {response.text[:500]}")
             if response.status_code == 200:
                 result = response.json()
+                print(f"响应内容: {result}")
                 if result.get("code") == 200:
                     print("推送成功")
                     return True
