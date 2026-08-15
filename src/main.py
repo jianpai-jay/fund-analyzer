@@ -245,25 +245,18 @@ def comprehensive_analysis(
         )
         result["sector_rotation"] = sector_result
 
-        # 15. 智能止损分析
-        stoploss_result = smart_stoploss_analyzer.generate_stoploss_advice(
-            nav_data=nav_data,
-            signal_type=result.get("signal", {}).get("category", "hold")
-        )
-        result["smart_stoploss"] = stoploss_result
-
-        # 16. 异常检测
+        # 15. 异常检测
         anomaly_data = {
             "fund_code": fund_code,
             "nav_data": nav_data,
             "flow_data": flow_data,
-            "manager_info": manager_info if 'manager_info' in dir() else None,
-            "holdings_data": holdings if 'holdings' in dir() else None
+            "manager_info": manager_info,
+            "holdings_data": holdings
         }
         anomaly_result = anomaly_detector.detect_all_anomalies(anomaly_data)
         result["anomaly"] = anomaly_result
 
-        # 17. 生成综合信号（包含所有分析维度）
+        # 16. 生成综合信号（包含所有分析维度）
         all_analysis = {
             "technical": result.get("technical", {}),
             "capital": result.get("capital", {}),
@@ -290,7 +283,14 @@ def comprehensive_analysis(
             "action_plan": comprehensive_signal.get("action_plan", {})
         }
 
-        # 14. 综合评分
+        # 17. 智能止损分析（需要signal结果）
+        stoploss_result = smart_stoploss_analyzer.generate_stoploss_advice(
+            nav_data=nav_data,
+            signal_type=result["signal"].get("category", "hold")
+        )
+        result["smart_stoploss"] = stoploss_result
+
+        # 18. 综合评分
         result["overall_score"] = calculate_overall_score(result)
 
         # 15. 保存历史记录
