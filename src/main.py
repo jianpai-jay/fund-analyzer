@@ -17,6 +17,10 @@ from .news_analyzer import news_analyzer
 from .sentiment import sentiment_analyzer
 from .signals import signal_generator
 from .notifier import create_notifier
+from .fund_holdings import fund_holdings_analyzer
+from .fund_manager import fund_manager_analyzer
+from .peer_comparison import peer_comparison_analyzer
+from .dca_strategy import dca_strategy_analyzer
 
 
 def analyze_all_funds() -> List[Dict[str, Any]]:
@@ -38,6 +42,7 @@ def analyze_all_funds() -> List[Dict[str, Any]]:
     for fund in funds:
         fund_code = fund["code"]
         fund_name = fund["name"]
+        fund_type = fund.get("type", "混合型")
 
         print(f"\n{'='*50}")
         print(f"正在分析基金: {fund_name} ({fund_code})")
@@ -74,7 +79,8 @@ def analyze_all_funds() -> List[Dict[str, Any]]:
             flow_data=flow_data,
             north_data=north_data,
             news=news,
-            market_sentiment=market_sentiment
+            market_sentiment=market_sentiment,
+            fund_type=fund_type
         )
 
         results.append(result)
@@ -92,7 +98,8 @@ def comprehensive_analysis(
     flow_data,
     north_data,
     news,
-    market_sentiment
+    market_sentiment,
+    fund_type: str = "混合型"
 ) -> Dict[str, Any]:
     """
     综合分析基金
@@ -107,6 +114,7 @@ def comprehensive_analysis(
         north_data: 北向资金
         news: 新闻数据
         market_sentiment: 市场情绪
+        fund_type: 基金类型
 
     Returns:
         dict: 综合分析结果
@@ -200,6 +208,28 @@ def comprehensive_analysis(
 
         # 8. 综合评分
         result["overall_score"] = calculate_overall_score(result)
+
+        # 9. 持仓分析
+        holdings = data_fetcher.get_fund_holdings(fund_code)
+        if holdings:
+            holdings_result = fund_holdings_analyzer.analyze_holdings(holdings, fund_code)
+            result["holdings"] = holdings_result
+
+        # 10. 基金经理分析
+        manager_info = data_fetcher.get_fund_manager(fund_code)
+        if manager_info:
+            manager_result = fund_manager_analyzer.analyze_manager(manager_info, fund_code)
+            result["manager"] = manager_result
+
+        # 11. 同类基金对比
+        peer_funds = data_fetcher.get_peer_funds(fund_code, fund_type)
+        if peer_funds:
+            peer_result = peer_comparison_analyzer.analyze_peer_comparison(result, peer_funds, fund_code)
+            result["peer_comparison"] = peer_result
+
+        # 12. 定投策略分析
+        dca_result = dca_strategy_analyzer.analyze_dca_strategy(nav_data, fund_code)
+        result["dca_strategy"] = dca_result
 
     else:
         result["error"] = "无法获取数据"
@@ -379,6 +409,43 @@ def print_result(result: Dict):
     # 综合评分
     overall = result.get("overall_score", {})
     print(f"\n⭐ 综合评分: {overall.get('rating', 'N/A')} ({overall.get('score', 0):.1f}分)")
+
+    # 持仓分析
+    holdings = result.get("holdings", {})
+    if holdings and holdings.get("has_data"):
+        print(f"\n💼 持仓分析:")
+        print(f"  持仓数量: {holdings.get('total_holdings', 0)}只")
+        concentration = holdings.get("concentration", {})
+        print(f"  集中度: {concentration.get('description', 'N/A')}")
+        industry = holdings.get("industry_distribution", {})
+        print(f"  行业分散度: {industry.get('diversification_score', 0):.1%}")
+
+    # 基金经理分析
+    manager = result.get("manager", {})
+    if manager and manager.get("has_data"):
+        print(f"\n👤 基金经理: {manager.get('name', 'N/A')}")
+        experience = manager.get("experience", {})
+        print(f"  经验: {experience.get('description', 'N/A')}")
+        performance = manager.get("performance", {})
+        print(f"  业绩: {performance.get('description', 'N/A')}")
+
+    # 同类基金对比
+    peer = result.get("peer_comparison", {})
+    if peer and peer.get("has_data"):
+        print(f"\n📊 同类基金对比:")
+        ranking = peer.get("ranking", {})
+        print(f"  排名: {ranking.get('description', 'N/A')}")
+        comparison = peer.get("comparison", {})
+        print(f"  优势: {comparison.get('better_count', 0)}/{comparison.get('total_count', 0)}项指标占优")
+
+    # 定投策略
+    dca = result.get("dca_strategy", {})
+    if dca and dca.get("has_data"):
+        print(f"\n💰 定投策略:")
+        dca_result = dca.get("dca_result", {})
+        print(f"  定投收益率: {dca_result.get('return_rate', 0):.2f}%")
+        signal = dca.get("signal", {})
+        print(f"  建议: {signal.get('description', 'N/A')}")
 
 
 def send_signal_alert(result: Dict) -> bool:

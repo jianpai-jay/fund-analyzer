@@ -133,6 +133,59 @@ class PushPlusNotifier:
 <hr>
 """)
 
+            # 持仓分析
+            holdings = fund.get("holdings", {})
+            if holdings and holdings.get("has_data"):
+                concentration = holdings.get("concentration", {})
+                industry = holdings.get("industry_distribution", {})
+                html.append(f"""
+<div style="margin-bottom: 15px; padding: 12px; background-color: #f0f8ff; border-radius: 8px; border-left: 4px solid #3498db;">
+    <h4 style="margin-top: 0; color: #2c3e50;">💼 持仓分析</h4>
+    <p>持仓数量: {holdings.get('total_holdings', 0)}只</p>
+    <p>集中度: {concentration.get('description', 'N/A')}</p>
+    <p>行业分散度: {industry.get('diversification_score', 0):.1%}</p>
+</div>
+""")
+
+            # 基金经理分析
+            manager = fund.get("manager", {})
+            if manager and manager.get("has_data"):
+                experience = manager.get("experience", {})
+                performance = manager.get("performance", {})
+                html.append(f"""
+<div style="margin-bottom: 15px; padding: 12px; background-color: #fff0f5; border-radius: 8px; border-left: 4px solid #e91e63;">
+    <h4 style="margin-top: 0; color: #2c3e50;">👤 基金经理: {manager.get('name', 'N/A')}</h4>
+    <p>经验: {experience.get('description', 'N/A')}</p>
+    <p>业绩: {performance.get('description', 'N/A')}</p>
+</div>
+""")
+
+            # 同类基金对比
+            peer = fund.get("peer_comparison", {})
+            if peer and peer.get("has_data"):
+                ranking = peer.get("ranking", {})
+                comparison = peer.get("comparison", {})
+                html.append(f"""
+<div style="margin-bottom: 15px; padding: 12px; background-color: #f5f5dc; border-radius: 8px; border-left: 4px solid #ff9800;">
+    <h4 style="margin-top: 0; color: #2c3e50;">📊 同类基金对比</h4>
+    <p>排名: {ranking.get('description', 'N/A')}</p>
+    <p>优势: {comparison.get('better_count', 0)}/{comparison.get('total_count', 0)}项指标占优</p>
+</div>
+""")
+
+            # 定投策略
+            dca = fund.get("dca_strategy", {})
+            if dca and dca.get("has_data"):
+                dca_result = dca.get("dca_result", {})
+                signal = dca.get("signal", {})
+                html.append(f"""
+<div style="margin-bottom: 15px; padding: 12px; background-color: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+    <h4 style="margin-top: 0; color: #2c3e50;">💰 定投策略</h4>
+    <p>定投收益率: {dca_result.get('return_rate', 0):.2f}%</p>
+    <p>建议: {signal.get('description', 'N/A')}</p>
+</div>
+""")
+
         # 免责声明
         html.append("""
 <div style="margin-top: 20px; padding: 10px; background-color: #fff3cd; border-radius: 8px; font-size: 12px; color: #856404;">

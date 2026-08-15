@@ -27,10 +27,10 @@ class Config:
                 return json.load(f)
         except FileNotFoundError:
             print(f"配置文件不存在: {self.config_path}")
-            return {"funds": [], "analysis_days": 30, "notify_webhook": ""}
+            return {"funds": [], "analysis_days": 90, "notify_webhook": ""}
         except json.JSONDecodeError as e:
             print(f"配置文件格式错误: {e}")
-            return {"funds": [], "analysis_days": 30, "notify_webhook": ""}
+            return {"funds": [], "analysis_days": 90, "notify_webhook": ""}
 
     def get_funds(self) -> List[Dict[str, str]]:
         """获取基金列表"""
@@ -57,6 +57,15 @@ class Config:
             return token
         # 否则从配置文件获取
         return self.config.get("pushplus_token", "")
+
+    def get_pushplus_topic(self) -> str:
+        """获取 PushPlus Topic（群组推送）"""
+        # 优先从环境变量获取
+        topic = os.environ.get("PUSHPLUS_TOPIC")
+        if topic:
+            return topic
+        # 否则从配置文件获取
+        return self.config.get("pushplus_topic", "")
 
     def add_fund(self, code: str, name: str, fund_type: str) -> bool:
         """添加基金"""

@@ -11,7 +11,8 @@
       "type": "指数型"
     }
   ],
-  "analysis_days": 30,
+  "analysis_days": 90,
   "notify_webhook": "",
-  "pushplus_token": ""
+  "pushplus_token": "",
+  "pushplus_topic": ""
 }

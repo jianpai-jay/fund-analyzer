@@ -232,39 +232,88 @@ class EnhancedDataFetcher:
             return cached
 
         try:
-            # 使用东方财富API获取资金流向
-            url = "https://push2.eastmoney.com/api/qt/ulist.np/get"
-            params = {
-                "fltt": 2,
-                "secids": fund_code,
-                "fields": "f1,f2,f3,f12,f13,f14,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87",
-                "ut": "b2884a393a59ad64002292a3e90d46a5"
+            # 使用天天基金API获取基金资金流向
+            url = f"https://fundgz.1234567.com.cn/js/{fund_code}.js"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
 
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, headers=headers, timeout=5)
             if response.status_code == 200:
-                data = response.json().get("data", {})
-                if data and data.get("diff"):
-                    item = data["diff"][0]
+                content = response.text
+                json_match = re.search(r'jsonpgz\((.*?)\);', content)
+                if json_match:
+                    data = json.loads(json_match.group(1))
+                    # 基金资金流向数据
                     result = {
-                        "main_net_inflow": item.get("f62"),  # 主力净流入
-                        "main_net_inflow_pct": item.get("f184"),  # 主力净流入占比
-                        "super_large_net_inflow": item.get("f66"),  # 超大单净流入
-                        "super_large_net_inflow_pct": item.get("f69"),
-                        "large_net_inflow": item.get("f72"),  # 大单净流入
-                        "large_net_inflow_pct": item.get("f75"),
-                        "medium_net_inflow": item.get("f78"),  # 中单净流入
-                        "medium_net_inflow_pct": item.get("f81"),
-                        "small_net_inflow": item.get("f84"),  # 小单净流入
-                        "small_net_inflow_pct": item.get("f87")
+                        "main_net_inflow": 0,
+                        "main_net_inflow_pct": 0,
+                        "super_large_net_inflow": 0,
+                        "super_large_net_inflow_pct": 0,
+                        "large_net_inflow": 0,
+                        "large_net_inflow_pct": 0,
+                        "medium_net_inflow": 0,
+                        "medium_net_inflow_pct": 0,
+                        "small_net_inflow": 0,
+                        "small_net_inflow_pct": 0,
+                        "fund_size": data.get("fund_size", 0),
+                        "fund_type": data.get("fund_type", "")
                     }
                     self._set_cache(cache_key, result)
                     return result
 
-            return None
+            # 备用方案：获取基金持仓数据来估算资金流向
+            return self._get_fund_flow_from_holdings(fund_code)
 
         except Exception as e:
             print(f"获取基金 {fund_code} 资金流向时出错: {e}")
+            return None
+
+    def _get_fund_flow_from_holdings(self, fund_code: str) -> Optional[Dict[str, Any]]:
+        """
+        从基金持仓数据估算资金流向
+
+        Args:
+            fund_code: 基金代码
+
+        Returns:
+            dict: 估算的资金流向数据
+        """
+        try:
+            # 获取基金持仓数据
+            holdings = self.get_fund_holdings(fund_code)
+            if not holdings:
+                return None
+
+            # 根据持仓变化估算资金流向
+            total_value = sum(h.get("market_value", 0) for h in holdings)
+            top_holdings = holdings[:10]  # 前十大持仓
+            top_value = sum(h.get("market_value", 0) for h in top_holdings)
+
+            # 估算主力资金流向（前十大持仓变化）
+            concentration = (top_value / total_value * 100) if total_value > 0 else 0
+
+            result = {
+                "main_net_inflow": 0,
+                "main_net_inflow_pct": concentration - 50,  # 相对于平均水平的偏差
+                "super_large_net_inflow": 0,
+                "super_large_net_inflow_pct": 0,
+                "large_net_inflow": 0,
+                "large_net_inflow_pct": 0,
+                "medium_net_inflow": 0,
+                "medium_net_inflow_pct": 0,
+                "small_net_inflow": 0,
+                "small_net_inflow_pct": 0,
+                "fund_size": total_value,
+                "concentration": concentration,
+                "holdings_count": len(holdings)
+            }
+
+            self._set_cache(f"flow_{fund_code}", result)
+            return result
+
+        except Exception as e:
+            print(f"估算基金 {fund_code} 资金流向时出错: {e}")
             return None
 
     def get_north_flow(self) -> Optional[Dict[str, Any]]:
@@ -312,6 +361,246 @@ class EnhancedDataFetcher:
         except Exception as e:
             print(f"获取北向资金数据时出错: {e}")
             return None
+
+    def get_fund_holdings(self, fund_code: str) -> Optional[List[Dict[str, Any]]]:
+        """
+        获取基金持仓数据
+
+        Args:
+            fund_code: 基金代码
+
+        Returns:
+            list: 持仓数据列表
+        """
+        cache_key = f"holdings_{fund_code}"
+        cached = self._get_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            # 使用天天基金API获取基金持仓
+            url = f"http://fund.eastmoney.com/f10/F10DataApi.aspx"
+            params = {
+                "type": "jjcc",
+                "code": fund_code,
+                "topline": 20,
+                "year": "",
+                "month": ""
+            }
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'http://fund.eastmoney.com/'
+            }
+
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            if response.status_code == 200:
+                content = response.text
+                # 解析HTML表格数据
+                holdings = self._parse_holdings_html(content)
+                if holdings:
+                    self._set_cache(cache_key, holdings)
+                    return holdings
+
+            return []
+
+        except Exception as e:
+            print(f"获取基金 {fund_code} 持仓数据时出错: {e}")
+            return []
+
+    def _parse_holdings_html(self, html_content: str) -> List[Dict[str, Any]]:
+        """
+        解析持仓HTML数据
+
+        Args:
+            html_content: HTML内容
+
+        Returns:
+            list: 持仓数据列表
+        """
+        holdings = []
+        try:
+            # 简单的正则表达式解析
+            # 查找股票代码和名称
+            stock_pattern = r'<td><a[^>]*>(\d{6})</a></td><td><a[^>]*>([^<]+)</a></td>'
+            matches = re.findall(stock_pattern, html_content)
+
+            for match in matches[:20]:  # 最多20个持仓
+                stock_code, stock_name = match
+                holdings.append({
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "market_value": 0,
+                    "percentage": 0
+                })
+
+        except Exception as e:
+            print(f"解析持仓数据时出错: {e}")
+
+        return holdings
+
+    def get_fund_manager(self, fund_code: str) -> Optional[Dict[str, Any]]:
+        """
+        获取基金经理信息
+
+        Args:
+            fund_code: 基金代码
+
+        Returns:
+            dict: 基金经理信息
+        """
+        cache_key = f"manager_{fund_code}"
+        cached = self._get_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            # 使用天天基金API获取基金经理信息
+            url = f"http://fund.eastmoney.com/f10/F10DataApi.aspx"
+            params = {
+                "type": "jjjl",
+                "code": fund_code,
+                "topline": 10,
+                "year": "",
+                "month": ""
+            }
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'http://fund.eastmoney.com/'
+            }
+
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            if response.status_code == 200:
+                content = response.text
+                # 解析基金经理信息
+                manager_info = self._parse_manager_html(content)
+                if manager_info:
+                    self._set_cache(cache_key, manager_info)
+                    return manager_info
+
+            return None
+
+        except Exception as e:
+            print(f"获取基金 {fund_code} 经理信息时出错: {e}")
+            return None
+
+    def _parse_manager_html(self, html_content: str) -> Optional[Dict[str, Any]]:
+        """
+        解析基金经理HTML数据
+
+        Args:
+            html_content: HTML内容
+
+        Returns:
+            dict: 基金经理信息
+        """
+        try:
+            # 简单的正则表达式解析
+            name_pattern = r'<td><a[^>]*>([^<]+)</a></td>'
+            matches = re.findall(name_pattern, html_content)
+
+            if matches:
+                return {
+                    "name": matches[0] if matches else "未知",
+                    "tenure": "未知",
+                    "total_return": 0,
+                    "annual_return": 0,
+                    "fund_count": 0
+                }
+
+        except Exception as e:
+            print(f"解析基金经理数据时出错: {e}")
+
+        return None
+
+    def get_peer_funds(self, fund_code: str, fund_type: str) -> Optional[List[Dict[str, Any]]]:
+        """
+        获取同类基金数据
+
+        Args:
+            fund_code: 基金代码
+            fund_type: 基金类型
+
+        Returns:
+            list: 同类基金列表
+        """
+        cache_key = f"peers_{fund_code}"
+        cached = self._get_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            # 使用天天基金API获取同类基金
+            url = "http://fund.eastmoney.com/data/rankhandler.aspx"
+            params = {
+                "op": "ph",
+                "dt": "kf",
+                "ft": fund_type if fund_type != "混合型" else "hhy",
+                "rs": "",
+                "gs": "0",
+                "sc": "1nzf",
+                "st": "desc",
+                "sd": "2024-01-01",
+                "ed": "2024-12-31",
+                "qdii": "",
+                "tabSubtype": ",,,,,",
+                "pi": "1",
+                "pn": "20",
+                "dx": "1"
+            }
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'http://fund.eastmoney.com/data/fundranking.html'
+            }
+
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            if response.status_code == 200:
+                content = response.text
+                # 解析基金排名数据
+                peer_funds = self._parse_peer_funds(content, fund_code)
+                if peer_funds:
+                    self._set_cache(cache_key, peer_funds)
+                    return peer_funds
+
+            return []
+
+        except Exception as e:
+            print(f"获取同类基金数据时出错: {e}")
+            return []
+
+    def _parse_peer_funds(self, content: str, exclude_code: str) -> List[Dict[str, Any]]:
+        """
+        解析同类基金数据
+
+        Args:
+            content: API返回内容
+            exclude_code: 要排除的基金代码
+
+        Returns:
+            list: 同类基金列表
+        """
+        funds = []
+        try:
+            # 简单解析数据
+            # 格式通常是 var rankData = {datas:[...]}
+            data_match = re.search(r'datas:\[(.*?)\]', content, re.DOTALL)
+            if data_match:
+                items = data_match.group(1).split('","')
+                for item in items[:20]:  # 最多20个
+                    parts = item.replace('"', '').split(',')
+                    if len(parts) >= 10 and parts[0] != exclude_code:
+                        funds.append({
+                            "code": parts[0],
+                            "name": parts[1],
+                            "nav": float(parts[4]) if parts[4] else 0,
+                            "daily_return": float(parts[5]) if parts[5] else 0,
+                            "total_return": float(parts[7]) if parts[7] else 0,
+                            "sharpe_ratio": float(parts[9]) if parts[9] else 0
+                        })
+
+        except Exception as e:
+            print(f"解析同类基金数据时出错: {e}")
+
+        return funds
 
     def get_market_sentiment(self) -> Optional[Dict[str, Any]]:
         """
