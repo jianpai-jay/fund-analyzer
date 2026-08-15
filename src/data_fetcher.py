@@ -18,6 +18,8 @@ class EnhancedDataFetcher:
     def __init__(self):
         self.cache = {}
         self.cache_ttl = 300  # 缓存5分钟
+        self.max_retries = 3  # 最大重试次数
+        self.retry_delay = 1  # 重试间隔(秒)
 
     def _get_cache(self, key: str) -> Optional[Any]:
         """获取缓存"""
@@ -30,6 +32,40 @@ class EnhancedDataFetcher:
     def _set_cache(self, key: str, data: Any):
         """设置缓存"""
         self.cache[key] = (data, time.time())
+
+    def _request_with_retry(self, url: str, params: dict = None, headers: dict = None, timeout: int = 10) -> Optional[requests.Response]:
+        """
+        带重试机制的HTTP请求
+
+        Args:
+            url: 请求URL
+            params: 请求参数
+            headers: 请求头
+            timeout: 超时时间
+
+        Returns:
+            Response对象或None
+        """
+        for attempt in range(self.max_retries):
+            try:
+                response = requests.get(url, params=params, headers=headers, timeout=timeout)
+                if response.status_code == 200:
+                    return response
+                # 4xx/5xx 错误也返回，不重试
+                return response
+            except requests.exceptions.Timeout:
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (attempt + 1))
+                    continue
+                return None
+            except requests.exceptions.ConnectionError:
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (attempt + 1))
+                    continue
+                return None
+            except Exception as e:
+                return None
+        return None
 
     def get_fund_nav(self, fund_code: str, days: int = 30) -> Optional[pd.DataFrame]:
         """
@@ -102,8 +138,8 @@ class EnhancedDataFetcher:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
 
-            response = requests.get(url, headers=headers, timeout=5)
-            if response.status_code == 200:
+            response = self._request_with_retry(url, headers=headers, timeout=5)
+            if response and response.status_code == 200:
                 # 解析JSONP响应
                 content = response.text
                 # 提取JSON部分
@@ -392,8 +428,8 @@ class EnhancedDataFetcher:
                 'Referer': 'http://fund.eastmoney.com/'
             }
 
-            response = requests.get(url, params=params, headers=headers, timeout=10)
-            if response.status_code == 200:
+            response = self._request_with_retry(url, params=params, headers=headers, timeout=10)
+            if response and response.status_code == 200:
                 content = response.text
                 # 解析HTML表格数据
                 holdings = self._parse_holdings_html(content)

@@ -287,6 +287,62 @@ class PushPlusNotifier:
     </div>
 """
 
+        # 基金分析（规模、公司、相关性、季节性）
+        fund_analysis = fund.get('fund_analysis', {})
+        if fund_analysis and fund_analysis.get('has_data'):
+            size_analysis = fund_analysis.get('fund_size', {})
+            company = fund_analysis.get('company', {})
+            correlation = fund_analysis.get('correlation', {})
+            seasonal = fund_analysis.get('seasonal', {})
+
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">基金分析</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">基金规模</td><td style="padding: 4px 0; text-align: right;">{size_analysis.get('size', 0):.0f}亿 - {size_analysis.get('rating', '暂无')}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">基金公司</td><td style="padding: 4px 0; text-align: right;">{company.get('rating', '暂无')}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">沪深300相关性</td><td style="padding: 4px 0; text-align: right;">{correlation.get('correlation', 0):.2f}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">季节性表现</td><td style="padding: 4px 0; text-align: right;">{seasonal.get('description', '暂无')}</td></tr>
+        </table>
+    </div>
+"""
+
+        # 回测分析
+        backtest = fund.get('backtest', {})
+        if backtest and backtest.get('has_data'):
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">回测分析</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">策略</td><td style="padding: 4px 0; text-align: right;">买入持有</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">总收益率</td><td style="padding: 4px 0; text-align: right; color: {'#27ae60' if backtest.get('total_return_rate', 0) >= 0 else '#e74c3c'};">{backtest.get('total_return_rate', 0):+.2f}%</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">年化收益</td><td style="padding: 4px 0; text-align: right;">{backtest.get('annual_return', 0):+.2f}%</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">最大回撤</td><td style="padding: 4px 0; text-align: right;">{backtest.get('max_drawdown', 0):.2f}%</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">夏普比率</td><td style="padding: 4px 0; text-align: right;">{backtest.get('sharpe_ratio', 0):.2f}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">策略评价</td><td style="padding: 4px 0; text-align: right;">{backtest.get('description', '暂无')}</td></tr>
+        </table>
+    </div>
+"""
+
+        # 历史趋势
+        history_trend = fund.get('history_trend', {})
+        if history_trend and history_trend.get('has_data'):
+            trend_desc = history_trend.get('trend', {})
+            trend_text = trend_desc.get('trend', '暂无') if isinstance(trend_desc, dict) else '暂无'
+            change = history_trend.get('signal_change', {})
+            change_desc = change.get('description', '暂无') if isinstance(change, dict) else '暂无'
+
+            html += f"""
+    <div style="background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+        <div style="font-weight: bold; color: #333; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px;">历史趋势</div>
+        <table style="width: 100%; font-size: 13px;">
+            <tr><td style="padding: 4px 0; color: #666;">近30天趋势</td><td style="padding: 4px 0; text-align: right;">{trend_text}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">信号变化</td><td style="padding: 4px 0; text-align: right;">{change_desc}</td></tr>
+            <tr><td style="padding: 4px 0; color: #666;">记录天数</td><td style="padding: 4px 0; text-align: right;">{history_trend.get('total_days', 0)}天</td></tr>
+        </table>
+    </div>
+"""
+
         html += "</div>"
         return html
 

@@ -1,0 +1,31 @@
+{
+  "fund_name": "招商中证白酒指数",
+  "analysis_date": "2026-08-15",
+  "fund_type": "指数型",
+  "signal_category": "hold",
+  "signal_type": "hold",
+  "confidence": 1.0,
+  "overall_score": {
+    "score": 52.5,
+    "rating": "⭐⭐⭐ 中等",
+    "components": {
+      "technical": 60,
+      "capital": 50,
+      "sentiment": 50,
+      "news": 50.0
+    }
+  },
+  "technical": {
+    "overall_signal": "neutral",
+    "signal_strength": 0,
+    "description": "技术面中性，无明显信号",
+    "macd_signal": "bullish",
+    "rsi_signal": "strong",
+    "bollinger_signal": "above_middle"
+  },
+  "risk_metrics": {
+    "volatility": 26.02,
+    "max_drawdown": 23.18,
+    "sharpe_ratio": -1.02
+  }
+}

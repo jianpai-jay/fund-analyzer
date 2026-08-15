@@ -21,6 +21,9 @@ from .fund_holdings import fund_holdings_analyzer
 from .fund_manager import fund_manager_analyzer
 from .peer_comparison import peer_comparison_analyzer
 from .dca_strategy import dca_strategy_analyzer
+from .history import history_manager
+from .fund_analysis import fund_analysis_analyzer
+from .backtest import backtest_analyzer
 
 
 def analyze_all_funds() -> List[Dict[str, Any]]:
@@ -211,7 +214,23 @@ def comprehensive_analysis(
         dca_result = dca_strategy_analyzer.analyze_dca_strategy(nav_data, fund_code)
         result["dca_strategy"] = dca_result
 
-        # 11. 生成综合信号（包含所有分析维度）
+        # 11. 基金综合分析（基金规模、公司、相关性、季节性）
+        comprehensive_fund_result = fund_analysis_analyzer.analyze_comprehensive(
+            fund_info=fund_info,
+            nav_data=nav_data,
+            fund_code=fund_code
+        )
+        result["fund_analysis"] = comprehensive_fund_result
+
+        # 12. 回测分析
+        backtest_result = backtest_analyzer.run_simple_backtest(
+            nav_data=nav_data,
+            strategy="buy_and_hold",
+            initial_capital=10000
+        )
+        result["backtest"] = backtest_result
+
+        # 13. 生成综合信号（包含所有分析维度）
         all_analysis = {
             "technical": result.get("technical", {}),
             "capital": result.get("capital", {}),
@@ -238,8 +257,30 @@ def comprehensive_analysis(
             "action_plan": comprehensive_signal.get("action_plan", {})
         }
 
-        # 12. 综合评分
+        # 14. 综合评分
         result["overall_score"] = calculate_overall_score(result)
+
+        # 15. 保存历史记录
+        history_record = {
+            "fund_name": fund_name,
+            "analysis_date": datetime.now().strftime("%Y-%m-%d"),
+            "fund_type": fund_type,
+            "signal_category": result["signal"]["category"],
+            "signal_type": result["signal"]["type"],
+            "confidence": result["signal"]["confidence"],
+            "overall_score": result.get("overall_score", {}),
+            "technical": result.get("technical", {}),
+            "risk_metrics": {
+                "volatility": result.get("volatility", 0),
+                "max_drawdown": result.get("max_drawdown", 0),
+                "sharpe_ratio": result.get("sharpe_ratio", 0)
+            }
+        }
+        history_manager.save_analysis(fund_code, history_record)
+
+        # 16. 获取历史趋势
+        history_trend = history_manager.get_trend(fund_code, days=30)
+        result["history_trend"] = history_trend
 
     else:
         result["error"] = "无法获取数据"
