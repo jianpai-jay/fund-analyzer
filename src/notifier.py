@@ -129,6 +129,90 @@ class PushPlusNotifier:
             <td style="padding: 8px; border-bottom: 1px solid #ddd;">{sortino_ratio:.2f}</td>
         </tr>
     </table>
+
+    <h4 style="color: #27ae60;">📊 技术分析</h4>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">综合信号</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('technical', {}).get('description', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">MACD</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('technical', {}).get('macd_signal', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">RSI</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('technical', {}).get('rsi_signal', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">布林带</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('technical', {}).get('bollinger_signal', 'N/A')}</td>
+        </tr>
+    </table>
+
+    <h4 style="color: #9b59b6;">💰 资金流向</h4>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">综合信号</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('capital', {}).get('description', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">主力资金</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('capital', {}).get('main_flow', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">北向资金</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('capital', {}).get('north_flow', 'N/A')}</td>
+        </tr>
+    </table>
+
+    <h4 style="color: #e74c3c;">📰 新闻分析</h4>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">综合信号</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('news', {}).get('description', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">情绪</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('news', {}).get('sentiment', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">政策影响</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('news', {}).get('policy_impact', 'N/A')}</td>
+        </tr>
+    </table>
+
+    <h4 style="color: #f39c12;">😊 情绪分析</h4>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">恐慌贪婪指数</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('sentiment', {}).get('fear_greed_index', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">情绪状态</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('sentiment', {}).get('fear_greed_sentiment', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">建议</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('sentiment', {}).get('advice', 'N/A')}</td>
+        </tr>
+    </table>
+
+    <h4 style="color: #8e44ad;">🔔 交易信号</h4>
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">信号类型</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('signal', {}).get('type', 'N/A')}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">信号强度</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{fund.get('signal', {}).get('confidence', 0):.0%}</td>
+        </tr>
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">触发条件</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">{', '.join(fund.get('signal', {}).get('conditions', []))}</td>
+        </tr>
+    </table>
 </div>
 <hr>
 """)
