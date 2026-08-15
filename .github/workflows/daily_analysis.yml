@@ -40,7 +40,7 @@ jobs:
 
       - name: Run fund analysis
         env:
-          WECHAT_WEBHOOK_URL: ${{ secrets.WECHAT_WEBHOOK_URL }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         run: |
           python -m src.main
 
@@ -54,24 +54,28 @@ jobs:
       - name: Send error notification
         if: failure()
         env:
-          WECHAT_WEBHOOK_URL: ${{ secrets.WECHAT_WEBHOOK_URL }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         run: |
           python -c "
           import requests
           import os
           from datetime import datetime
 
-          webhook_url = os.environ.get('WECHAT_WEBHOOK_URL')
-          if webhook_url:
-              message = f'''# ❌ 基金分析任务失败
-          > 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-          > 请检查 GitHub Actions 日志'''
+          token = os.environ.get('PUSHPLUS_TOKEN')
+          if token:
+              message = f'''
+              <h2>❌ 基金分析任务失败</h2>
+              <p>时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+              <p>请检查 GitHub Actions 日志</p>
+              '''
 
               payload = {
-                  'msgtype': 'markdown',
-                  'markdown': {'content': message}
+                  'token': token,
+                  'title': '❌ 基金分析任务失败',
+                  'content': message,
+                  'template': 'html'
               }
-              requests.post(webhook_url, json=payload, timeout=10)
+              requests.post('http://www.pushplus.plus/send', json=payload, timeout=10)
           "
 
       # 清理工作流运行记录（可选）

@@ -49,6 +49,15 @@ class Config:
         # 否则从配置文件获取
         return self.config.get("notify_webhook", "")
 
+    def get_pushplus_token(self) -> str:
+        """获取 PushPlus Token"""
+        # 优先从环境变量获取
+        token = os.environ.get("PUSHPLUS_TOKEN")
+        if token:
+            return token
+        # 否则从配置文件获取
+        return self.config.get("pushplus_token", "")
+
     def add_fund(self, code: str, name: str, fund_type: str) -> bool:
         """添加基金"""
         # 检查基金是否已存在

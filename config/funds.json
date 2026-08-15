@@ -12,5 +12,6 @@
     }
   ],
   "analysis_days": 30,
-  "notify_webhook": ""
+  "notify_webhook": "",
+  "pushplus_token": ""
 }

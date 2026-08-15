@@ -66,8 +66,8 @@ def send_report(results: List[Dict[str, Any]]) -> bool:
     """
     notifier = create_notifier()
 
-    if not notifier.webhook_url:
-        print("未配置 Webhook URL，跳过推送")
+    if not notifier.token:
+        print("未配置 PushPlus Token，跳过推送")
         print("\n分析结果:")
         for result in results:
             print(f"\n{result['name']} ({result['code']})")
@@ -108,7 +108,7 @@ def run_analysis():
         # 尝试发送错误报告
         try:
             notifier = create_notifier()
-            if notifier.webhook_url:
+            if notifier.token:
                 notifier.send_error_report(str(e))
         except Exception as notify_error:
             print(f"发送错误报告失败: {notify_error}")
@@ -122,7 +122,7 @@ def main():
         print(f"配置文件路径: {config.config_path}")
         print(f"基金数量: {len(config.get_funds())}")
         print(f"分析天数: {config.get_analysis_days()}")
-        print(f"Webhook URL: {'已配置' if config.get_webhook_url() else '未配置'}")
+        print(f"PushPlus Token: {'已配置' if config.get_pushplus_token() else '未配置'}")
         return
 
     run_analysis()
