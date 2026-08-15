@@ -1,0 +1,16 @@
+{
+  "funds": [
+    {
+      "code": "110011",
+      "name": "易方达中小盘混合",
+      "type": "混合型"
+    },
+    {
+      "code": "161725",
+      "name": "招商中证白酒指数",
+      "type": "指数型"
+    }
+  ],
+  "analysis_days": 30,
+  "notify_webhook": ""
+}
