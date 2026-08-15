@@ -1,6 +1,6 @@
 """
-Web应用模块
-提供手动触发分析和推送的Web界面
+Web应用模块 - 移动端优化版
+提供一键分析推送功能，支持手机访问
 """
 import os
 import sys
@@ -23,172 +23,186 @@ analysis_status = {
     "running": False,
     "last_run": None,
     "last_result": None,
-    "error": None
+    "error": None,
+    "logs": []
 }
 
-# HTML模板
+# 移动端优化的HTML模板
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>基金研究助手 - 控制面板</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>基金推送助手</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 15px;
+            padding-bottom: 30px;
         }
         .container {
-            max-width: 900px;
+            max-width: 500px;
             margin: 0 auto;
         }
         .header {
             text-align: center;
             color: white;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            padding: 20px 0;
         }
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 2em;
+            margin-bottom: 8px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
         .header p {
-            font-size: 1.1em;
+            font-size: 1em;
             opacity: 0.9;
         }
         .card {
             background: white;
             border-radius: 16px;
-            padding: 25px;
-            margin-bottom: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.15);
         }
         .card-title {
-            font-size: 1.3em;
+            font-size: 1.1em;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 2px solid #667eea;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         .status-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+            grid-template-columns: 1fr;
+            gap: 10px;
         }
         .status-item {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 12px;
             border-radius: 10px;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .status-item .label {
             font-size: 0.9em;
             color: #666;
-            margin-bottom: 5px;
         }
         .status-item .value {
-            font-size: 1.4em;
+            font-size: 1em;
             font-weight: bold;
             color: #333;
         }
         .status-item.running .value { color: #f39c12; }
         .status-item.success .value { color: #27ae60; }
         .status-item.error .value { color: #e74c3c; }
-        .btn-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
+
+        /* 一键推送按钮 - 大尺寸，适合手机触摸 */
+        .push-btn-container {
+            padding: 20px 0;
         }
-        .btn {
-            padding: 12px 30px;
+        .push-btn {
+            width: 100%;
+            padding: 25px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: 16px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+            min-height: 80px;
+        }
+        .push-btn:active:not(:disabled) {
+            transform: scale(0.98);
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+        }
+        .push-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            box-shadow: none;
+        }
+        .push-btn .icon {
+            font-size: 1.5em;
+        }
+        .push-btn .text {
+            flex: 1;
+        }
+        .push-btn .subtext {
+            font-size: 0.7em;
+            font-weight: normal;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
+        /* 次要按钮 */
+        .btn-secondary {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 12px;
             font-size: 1em;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-        }
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            margin-top: 10px;
+            min-height: 50px;
         }
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        .btn-secondary:active:not(:disabled) {
+            transform: scale(0.98);
         }
-        .btn-success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
+        .btn-secondary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
-        .btn-success:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);
-        }
-        .btn-warning {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-        .btn-warning:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
-        }
-        .config-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .config-table th,
-        .config-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        .config-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-        .config-table td {
-            color: #555;
-        }
+
         .fund-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
         }
         .fund-tag {
             background: #e8f4fd;
             color: #2980b9;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
         }
         .log-box {
             background: #1e1e1e;
             color: #d4d4d4;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9em;
-            max-height: 300px;
+            font-size: 0.8em;
+            max-height: 200px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -198,9 +212,9 @@ HTML_TEMPLATE = """
         .log-box .error { color: #f44747; }
         .spinner {
             display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ffffff;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
             border-radius: 50%;
             border-top-color: transparent;
             animation: spin 1s linear infinite;
@@ -211,84 +225,85 @@ HTML_TEMPLATE = """
         .footer {
             text-align: center;
             color: white;
-            margin-top: 30px;
+            margin-top: 20px;
             opacity: 0.8;
+            font-size: 0.85em;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 1.6em;
+            }
+            .push-btn {
+                padding: 20px 15px;
+                font-size: 1.2em;
+                min-height: 70px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 基金研究助手</h1>
-            <p>手动控制面板 - 分析 & 推送</p>
+            <h1>📊 基金推送助手</h1>
+            <p>一键分析并推送到微信</p>
         </div>
 
-        <!-- 状态卡片 -->
+        <!-- 状态显示 -->
         <div class="card">
             <div class="card-title">📈 运行状态</div>
             <div class="status-grid">
                 <div class="status-item {{ 'running' if status.running else ('success' if status.last_run else '') }}">
-                    <div class="label">当前状态</div>
-                    <div class="value" id="statusText">{{ '运行中...' if status.running else ('就绪' if status.last_run else '等待中') }}</div>
+                    <span class="label">当前状态</span>
+                    <span class="value" id="statusText">{{ '运行中...' if status.running else ('就绪' if status.last_run else '等待中') }}</span>
                 </div>
                 <div class="status-item">
-                    <div class="label">上次运行</div>
-                    <div class="value" id="lastRun">{{ status.last_run or '从未运行' }}</div>
+                    <span class="label">上次运行</span>
+                    <span class="value" id="lastRun">{{ status.last_run or '从未运行' }}</span>
                 </div>
                 <div class="status-item {{ 'error' if status.error else '' }}">
-                    <div class="label">状态信息</div>
-                    <div class="value" id="statusMsg">{{ status.error or '正常' }}</div>
+                    <span class="label">状态信息</span>
+                    <span class="value" id="statusMsg">{{ status.error or '正常' }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- 操作按钮 -->
+        <!-- 一键推送按钮 -->
         <div class="card">
-            <div class="card-title">🎮 操作面板</div>
-            <div class="btn-group">
-                <button class="btn btn-primary" onclick="runAnalysis()" id="btnAnalyze" {{ 'disabled' if status.running }}>
-                    {{ '<span class="spinner"></span> 分析中...' if status.running else '🔍 开始分析' }}
+            <div class="push-btn-container">
+                <button class="push-btn" onclick="runAndPush()" id="btnPush" {{ 'disabled' if status.running }}>
+                    {% if status.running %}
+                    <span class="spinner"></span>
+                    <div class="text">
+                        <div>分析推送中...</div>
+                        <div class="subtext">请稍候，正在处理</div>
+                    </div>
+                    {% else %}
+                    <span class="icon">📤</span>
+                    <div class="text">
+                        <div>一键分析并推送</div>
+                        <div class="subtext">分析所有基金并推送到微信</div>
+                    </div>
+                    {% endif %}
                 </button>
-                <button class="btn btn-success" onclick="runAndPush()" id="btnPush" {{ 'disabled' if status.running }}>
-                    📤 分析并推送
-                </button>
-                <button class="btn btn-warning" onclick="refreshStatus()">
+                <button class="btn-secondary" onclick="refreshStatus()" id="btnRefresh">
                     🔄 刷新状态
                 </button>
             </div>
         </div>
 
-        <!-- 配置信息 -->
+        <!-- 基金列表 -->
         <div class="card">
-            <div class="card-title">⚙️ 当前配置</div>
-            <table class="config-table">
-                <tr>
-                    <th>配置项</th>
-                    <th>值</th>
-                </tr>
-                <tr>
-                    <td>分析天数</td>
-                    <td>{{ config.analysis_days }}天</td>
-                </tr>
-                <tr>
-                    <td>推送主题</td>
-                    <td>{{ config.pushplus_topic or '未配置' }}</td>
-                </tr>
-                <tr>
-                    <td>推送Token</td>
-                    <td>{{ '已配置' if config.pushplus_token else '未配置' }}</td>
-                </tr>
-                <tr>
-                    <td>监控基金</td>
-                    <td>
-                        <div class="fund-list">
-                            {% for fund in config.funds %}
-                            <span class="fund-tag">{{ fund.name }} ({{ fund.code }})</span>
-                            {% endfor %}
-                        </div>
-                    </td>
-                </tr>
-            </table>
+            <div class="card-title">📋 监控基金</div>
+            <div class="fund-list">
+                {% for fund in config.funds %}
+                <span class="fund-tag">{{ fund.name }}</span>
+                {% endfor %}
+            </div>
         </div>
 
         <!-- 运行日志 -->
@@ -306,13 +321,11 @@ HTML_TEMPLATE = """
         </div>
 
         <div class="footer">
-            <p>基金研究助手 v2.0 | 数据仅供参考，不构成投资建议</p>
+            <p>基金研究助手 v2.0 | 数据仅供参考</p>
         </div>
     </div>
 
     <script>
-        let refreshInterval;
-
         function addLog(message, type = 'info') {
             const logBox = document.getElementById('logBox');
             const time = new Date().toLocaleTimeString();
@@ -325,13 +338,25 @@ HTML_TEMPLATE = """
             document.getElementById('lastRun').textContent = data.last_run || '从未运行';
             document.getElementById('statusMsg').textContent = data.error || '正常';
 
-            document.getElementById('btnAnalyze').disabled = data.running;
-            document.getElementById('btnPush').disabled = data.running;
+            const btnPush = document.getElementById('btnPush');
+            btnPush.disabled = data.running;
 
             if (data.running) {
-                document.getElementById('btnAnalyze').innerHTML = '<span class="spinner"></span> 分析中...';
+                btnPush.innerHTML = `
+                    <span class="spinner"></span>
+                    <div class="text">
+                        <div>分析推送中...</div>
+                        <div class="subtext">请稍候，正在处理</div>
+                    </div>
+                `;
             } else {
-                document.getElementById('btnAnalyze').innerHTML = '🔍 开始分析';
+                btnPush.innerHTML = `
+                    <span class="icon">📤</span>
+                    <div class="text">
+                        <div>一键分析并推送</div>
+                        <div class="subtext">分析所有基金并推送到微信</div>
+                    </div>
+                `;
             }
         }
 
@@ -346,31 +371,6 @@ HTML_TEMPLATE = """
             }
         }
 
-        async function runAnalysis() {
-            if (!confirm('确定要开始分析吗？')) return;
-
-            addLog('开始分析...', 'info');
-            document.getElementById('btnAnalyze').disabled = true;
-            document.getElementById('btnAnalyze').innerHTML = '<span class="spinner"></span> 分析中...';
-
-            try {
-                const response = await fetch('/api/analyze', { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success) {
-                    addLog('分析完成！', 'success');
-                    refreshStatus();
-                } else {
-                    addLog('分析失败: ' + data.error, 'error');
-                }
-            } catch (error) {
-                addLog('请求失败: ' + error.message, 'error');
-            }
-
-            document.getElementById('btnAnalyze').disabled = false;
-            document.getElementById('btnAnalyze').innerHTML = '🔍 开始分析';
-        }
-
         async function runAndPush() {
             if (!confirm('确定要分析并推送到微信吗？')) return;
 
@@ -382,23 +382,42 @@ HTML_TEMPLATE = """
                 const data = await response.json();
 
                 if (data.success) {
-                    addLog('分析并推送完成！', 'success');
-                    if (data.push_result) {
-                        addLog('推送结果: ' + (data.push_result.success ? '成功' : '失败'), data.push_result.success ? 'success' : 'error');
-                    }
-                    refreshStatus();
+                    addLog('分析推送任务已启动', 'success');
+                    // 开始轮询状态
+                    pollStatus();
                 } else {
-                    addLog('失败: ' + data.error, 'error');
+                    addLog('启动失败: ' + data.error, 'error');
+                    document.getElementById('btnPush').disabled = false;
                 }
             } catch (error) {
                 addLog('请求失败: ' + error.message, 'error');
+                document.getElementById('btnPush').disabled = false;
             }
-
-            document.getElementById('btnPush').disabled = false;
         }
 
-        // 自动刷新状态
-        refreshInterval = setInterval(refreshStatus, 30000);
+        async function pollStatus() {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    updateStatus(data);
+
+                    if (!data.running) {
+                        clearInterval(pollInterval);
+                        if (data.error) {
+                            addLog('分析失败: ' + data.error, 'error');
+                        } else {
+                            addLog('分析推送完成！', 'success');
+                        }
+                    }
+                } catch (error) {
+                    console.error('轮询状态失败:', error);
+                }
+            }, 2000);
+        }
+
+        // 页面加载时刷新状态
+        refreshStatus();
     </script>
 </body>
 </html>
@@ -497,6 +516,7 @@ def api_analyze_and_push():
 def run_web_app(host='0.0.0.0', port=5000, debug=False):
     """运行Web应用"""
     print(f"🚀 启动Web服务: http://localhost:{port}")
+    print(f"📱 手机访问: http://你的IP地址:{port}")
     print(f"📊 控制面板: http://localhost:{port}")
     app.run(host=host, port=port, debug=debug)
 
